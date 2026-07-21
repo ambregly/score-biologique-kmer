@@ -151,9 +151,12 @@ analyse_fusions_kmer/
 ├── fusions_score_kmer_all_variants.tsv # toutes les variantes de breakpoints
 ├── fusions_specifiques_kmer.tsv        # sous-ensemble absent des normaux
 └── figures/
-    ├── score_classement.png        # top fusions par score
-    ├── repartition_types.png       # types chimériques reconstruits
-    └── score_decomposition.png     # décomposition du score par composante
+    ├── carte_priorisation_focalite.png # score × expression max/patient, couleur = focalité
+    ├── carte_priorisation_type.png     # même carte, couleur = type chimérique
+    ├── charge_par_patient.png          # nb de fusions chromo-spé. par patient, par type
+    ├── score_classement.png            # top fusions par score
+    ├── repartition_types.png           # types chimériques reconstruits
+    └── score_decomposition.png         # décomposition du score par composante
 ```
 
 ---
@@ -178,8 +181,11 @@ Rscript score_kmer.R \
 
 ## Prérequis
 
-- **R ≥ 4.1** avec `tidyverse` et `scales`.
+- **R ≥ 4.1** avec `tidyverse` et `scales` (obligatoires) ; `ggrepel` (optionnel —
+  labels non chevauchants sur les cartes, sinon `geom_text`).
 - Outils shell `zcat`, `awk`, `grep` (pré-filtrage de l'annotation GENCODE).
+- Un device **cairo** + une **locale UTF-8** (fixés automatiquement par le script)
+  pour le rendu des accents et du `²` dans les figures.
 
 ## Notes méthodologiques
 

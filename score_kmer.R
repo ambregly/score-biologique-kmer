@@ -63,10 +63,16 @@
 #   Rscript score_kmer.R --help
 # =============================================================================
 
+# locale UTF-8 : rendu correct des accents et du "²" (sinon locale C -> "..")
+for (loc in c("C.UTF-8", "en_US.UTF-8", "fr_FR.UTF-8", "C.utf8")) {
+  if (suppressWarnings(Sys.setlocale("LC_CTYPE", loc)) != "") break
+}
 suppressPackageStartupMessages({
   library(tidyverse)
   library(scales)
 })
+# device cairo si dispo : rendu correct des accents et du "²" dans les PNG
+if (isTRUE(capabilities("cairo"))) options(bitmapType = "cairo")
 
 # ── CONFIG PAR DÉFAUT ────────────────────────────────────────────────────────
 opt <- list(
@@ -411,6 +417,26 @@ feat <- feat_all %>%
 cat(nrow(feat), "fusions après déduplication par paire de gènes (sur",
     nrow(feat_all), "variantes de breakpoints)\n")
 
+# ── 8c. STATS PAR PATIENT (pour les cartes de priorisation) ──────────────────
+# expression d'une fusion chez un patient = moyenne de ses k-mers chez ce patient.
+# Indice de focalité = max² / somme (grand = expression concentrée sur 1 patient).
+per_pat <- patho %>%
+  mutate(gene_pair = paste(resolve_alias(gene5), resolve_alias(gene3), sep = "--")) %>%
+  group_by(gene_pair, sample) %>%
+  summarise(expr = mean(count, na.rm = TRUE), .groups = "drop")
+foc <- per_pat %>%
+  group_by(gene_pair) %>%
+  summarise(max_patient = max(expr, na.rm = TRUE),
+            sum_patient = sum(expr, na.rm = TRUE),
+            n_pat_pos   = sum(expr > 0), .groups = "drop") %>%
+  mutate(focalite_idx = ifelse(sum_patient > 0, max_patient^2 / sum_patient, 0),
+         focalite = factor(case_when(
+           n_pat_pos <= 1 ~ "1 patient (mono)",
+           n_pat_pos <= 3 ~ "2–3 patients (focale)",
+           TRUE           ~ "≥ 4 patients (diffuse)"),
+           levels = c("1 patient (mono)", "2–3 patients (focale)", "≥ 4 patients (diffuse)")))
+feat <- feat %>% left_join(foc, by = "gene_pair")
+
 # ── 9. SORTIE TABLE ──────────────────────────────────────────────────────────
 out_cols <- c(
   "gene_pair",
@@ -419,6 +445,7 @@ out_cols <- c(
   "type_base", "class_ruffle", "distance_bp", "is_who",
   "mean_count_patho", "n_patients_pos", "n_kmers", "expr_patho",
   "n_normaux_pos", "freq_norm", "mean_count_normaux", "val_norm", "presence_normaux",
+  "max_patient", "n_pat_pos", "focalite_idx", "focalite",
   "ctx5", "ctx3", "frac_frame",
   "frac_type", "frac_spec", "frac_who",
   "score_type", "score_frame", "score_spec", "score_who",
@@ -490,6 +517,77 @@ p_dec <- ggplot(dec_df, aes(val, fusion_ord, fill = comp)) +
        x = paste0("Points cumulés (max = ", MAX_SCORE, ")"), y = NULL) +
   theme(axis.text.y = element_text(size = 7), legend.position = "bottom")
 ggsave(file.path(DIR_FIG, "score_decomposition.png"), p_dec, width = 11, height = 9, dpi = 150)
+
+# ── 10d/10e. CARTES DE PRIORISATION (score × expression max par patient) ──────
+has_repel <- requireNamespace("ggrepel", quietly = TRUE)
+FOCALITE_COLORS <- c("1 patient (mono)" = "#d62728",
+                     "2–3 patients (focale)" = "#ff7f0e",
+                     "≥ 4 patients (diffuse)" = "#1f77b4")
+map_df <- fig_df %>% filter(!is.na(max_patient), max_patient > 0)
+# labels : fusions notables (zone P1 OU expression dans le top 10 %)
+lab_df <- if (nrow(map_df) > 0) map_df %>%
+  filter(score_norm >= 0.65 |
+         max_patient >= quantile(max_patient, 0.90, na.rm = TRUE)) else map_df
+add_labels <- function(p) {
+  if (nrow(lab_df) == 0) return(p)
+  if (has_repel)
+    p + ggrepel::geom_text_repel(data = lab_df, aes(label = fusion_label), size = 2.4,
+          color = "grey20", max.overlaps = 30, min.segment.length = 0, seed = 1)
+  else
+    p + geom_text(data = lab_df, aes(label = fusion_label), size = 2.2,
+                  color = "grey20", vjust = -0.7)
+}
+prioris_map <- function(colvar, cscale) {
+  p <- ggplot(map_df, aes(x = score_norm, y = max_patient)) +
+    annotate("rect", xmin = 0.65, xmax = Inf, ymin = -Inf, ymax = Inf,
+             fill = "#d62728", alpha = 0.05) +
+    geom_vline(xintercept = 0.65, linetype = "dashed", color = "grey40", linewidth = 0.3) +
+    geom_vline(xintercept = 0.40, linetype = "dotted", color = "grey55", linewidth = 0.3) +
+    geom_point(aes(size = focalite_idx, color = .data[[colvar]]), alpha = 0.85) +
+    scale_y_log10() +
+    scale_x_continuous(labels = percent_format(accuracy = 1)) +
+    scale_size_area(max_size = 12, name = "Indice focalité\n(max² / somme)") +
+    cscale +
+    labs(x = "Score biologique", y = "Comptage k-mer max chez un patient (log)") +
+    theme(plot.title = element_text(face = "bold"))
+  add_labels(p)
+}
+if (nrow(map_df) > 0) {
+  p_map_foc <- prioris_map("focalite",
+      scale_color_manual(values = FOCALITE_COLORS, name = "Focalité", na.value = "grey70")) +
+    labs(title = "Carte de priorisation des fusions chromo-spécifiques",
+         subtitle = "Score biologique × expression max par patient · focalité = spécificité à un sous-groupe")
+  ggsave(file.path(DIR_FIG, "carte_priorisation_focalite.png"), p_map_foc,
+         width = 12, height = 9, dpi = 150)
+
+  p_map_type <- prioris_map("type_base",
+      scale_color_manual(values = TYPE_COLORS, drop = FALSE, name = "Type chimérique", na.value = "grey65")) +
+    labs(title = "Carte de priorisation — colorée par type chimérique",
+         subtitle = "Score biologique × expression max par patient · couleur = type reconstruit")
+  ggsave(file.path(DIR_FIG, "carte_priorisation_type.png"), p_map_type,
+         width = 12, height = 9, dpi = 150)
+}
+
+# ── 10f. CHARGE PAR PATIENT (fusions chromo-spécifiques portées par patient) ──
+spec_pairs <- feat %>% filter(presence_normaux == 0) %>%
+  transmute(gene_pair, type_base = factor(type_base, levels = names(TYPE_COLORS)))
+burden <- per_pat %>% filter(expr > 0) %>%
+  inner_join(spec_pairs, by = "gene_pair") %>%
+  count(sample, type_base, name = "n")
+if (nrow(burden) > 0) {
+  tot <- burden %>% group_by(sample) %>% summarise(t = sum(n), .groups = "drop")
+  p_burden <- burden %>%
+    mutate(sample = factor(sample, levels = tot$sample[order(tot$t)])) %>%
+    ggplot(aes(n, sample, fill = type_base)) +
+    geom_col() +
+    scale_fill_manual(values = TYPE_COLORS, drop = TRUE, name = "Type chimérique") +
+    scale_x_continuous(expand = expansion(mult = c(0, 0.05))) +
+    labs(title = "Charge de fusions chromo-spécifiques par patient",
+         subtitle = "Fusions (absentes des normaux) portées par chaque patient, par type",
+         x = "Nombre de fusions", y = NULL) +
+    theme(plot.title = element_text(face = "bold"))
+  ggsave(file.path(DIR_FIG, "charge_par_patient.png"), p_burden, width = 10, height = 7, dpi = 150)
+}
 
 # ── 11. RÉSUMÉ CONSOLE ───────────────────────────────────────────────────────
 cat("\n=== RÉSUMÉ ===\n")
