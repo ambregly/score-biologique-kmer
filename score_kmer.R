@@ -323,12 +323,13 @@ load_annotation <- function(genes) {
 bp_context <- function(gene, chr, bp, annot, tol) {
   n <- length(bp); out <- rep("other", n)
   if (is.null(annot)) return(rep(NA_character_, n))       # -> fraction neutre plus loin
+  norm_chr <- function(x) sub("^chr", "", x)             # GENCODE "chr22" vs Ensembl "22"
   for (k in seq_len(n)) {
-    g <- gene[k]; c <- chr[k]; p <- bp[k]
+    g <- gene[k]; c <- norm_chr(chr[k]); p <- bp[k]
     if (is.na(g) || is.na(p)) { out[k] <- NA_character_; next }
-    ex <- annot$exon %>% filter(gene == g, chr == c)
+    ex <- annot$exon %>% filter(gene == g, norm_chr(chr) == c)
     if (nrow(ex) > 0 && min(abs(ex$pos - p)) <= tol) { out[k] <- "exon_boundary"; next }
-    cd <- annot$cds %>% filter(gene == g, chr == c)
+    cd <- annot$cds %>% filter(gene == g, norm_chr(chr) == c)
     if (nrow(cd) > 0 && any(cd$start <= p & p <= cd$end)) { out[k] <- "CDS"; next }
   }
   out
