@@ -396,10 +396,24 @@ feat <- feat %>%
     priorite = factor(case_when(
       score_norm >= 0.65 ~ "P1", score_norm >= 0.40 ~ "P2",
       score_norm >= 0.20 ~ "P3", TRUE ~ "NP"), levels = c("P1", "P2", "P3", "NP"))
-  )
+  ) %>%
+  mutate(gene_pair = paste(g5n, g3n, sep = "--"))
+
+# ── 8b. UNE FUSION = UNE PAIRE DE GÈNES (on garde la variante au meilleur score) ─
+# Une même paire de gènes peut apparaître avec plusieurs breakpoints (plusieurs
+# k-mers) : on ne la compte qu'UNE fois, en retenant la variante au score le plus
+# haut. feat_all conserve toutes les variantes pour la traçabilité.
+feat_all <- feat
+feat <- feat_all %>%
+  group_by(gene_pair) %>%
+  slice_max(order_by = score_norm, n = 1, with_ties = FALSE) %>%
+  ungroup()
+cat(nrow(feat), "fusions après déduplication par paire de gènes (sur",
+    nrow(feat_all), "variantes de breakpoints)\n")
 
 # ── 9. SORTIE TABLE ──────────────────────────────────────────────────────────
 out_cols <- c(
+  "gene_pair",
   "fusion_core", "gene5", "chr5", "bp5", "gene3", "chr3", "bp3",
   "strand5", "strand3", "direction5", "direction3",
   "type_base", "class_ruffle", "distance_bp", "is_who",
@@ -409,8 +423,13 @@ out_cols <- c(
   "frac_type", "frac_spec", "frac_who",
   "score_type", "score_frame", "score_spec", "score_who",
   "score_total", "score_norm", "priorite")
-res <- feat %>% select(any_of(out_cols)) %>% arrange(desc(score_norm), fusion_core)
+res <- feat %>% select(any_of(out_cols)) %>% arrange(desc(score_norm), gene_pair)
 write_tsv(res, file.path(DIR_OUT, "fusions_score_kmer.tsv"))
+
+# toutes les variantes de breakpoints (avant déduplication) — traçabilité
+res_all <- feat_all %>% select(any_of(out_cols)) %>%
+  arrange(gene_pair, desc(score_norm), fusion_core)
+write_tsv(res_all, file.path(DIR_OUT, "fusions_score_kmer_all_variants.tsv"))
 
 # fusions "chromo-spécifiques" : absentes des normaux (présence = 0)
 res_spec <- res %>% filter(presence_normaux == 0)

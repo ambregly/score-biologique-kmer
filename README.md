@@ -100,6 +100,11 @@ avec, sur l'ensemble des fusions candidates :
 **Agrégation des comptages = MOYENNE** sur tous les k-mers × échantillons *positifs*
 d'une fusion (les absents ne diluent pas). Vaut pour patho **et** normaux.
 
+**Une fusion = une paire de gènes.** Une même paire (`gene5'--gene3'`) peut
+apparaître avec plusieurs breakpoints (plusieurs k-mers) : elle n'est comptée
+qu'**une seule fois**, en retenant la variante au **score le plus haut**. Toutes
+les variantes restent tracées dans `fusions_score_kmer_all_variants.tsv`.
+
 **Matching blacklist** : clé `gene5'_bp5'_gene3'_bp3'` (avec breakpoints, **sans**
 chromosomes ni index).
 
@@ -139,8 +144,9 @@ Rscript score_kmer.R \
 ### Sorties (`--dir-out`)
 ```
 analyse_fusions_kmer/
-├── fusions_score_kmer.tsv          # toutes les fusions, score + reconstructions
-├── fusions_specifiques_kmer.tsv    # sous-ensemble absent des normaux
+├── fusions_score_kmer.tsv              # 1 ligne par paire de gènes (meilleur score)
+├── fusions_score_kmer_all_variants.tsv # toutes les variantes de breakpoints
+├── fusions_specifiques_kmer.tsv        # sous-ensemble absent des normaux
 └── figures/
     ├── score_classement.png        # top fusions par score
     ├── repartition_types.png       # types chimériques reconstruits
