@@ -35,13 +35,13 @@
 #                                   si délétion colinéaire même brin < seuil kb.
 #
 # ---------------------------------------------------------------------------
-# SCORE  =  Σ(fraction × poids) / Σ(poids)     (max 10 pts par défaut)
-#   type          (poids 4) : Transloc/Inversion 1 · Délét/Duplic 0.5 · RT 0.25 · sinon 0
-#   reading_frame (poids 2) : moyenne des 2 breakpoints ; par breakpoint :
-#                             bordure d'exon 1 · CDS 0.5 · reste (intron/UTR/inter) 0
-#   spécificité   (poids 2) : 2/3·(1 − présence_normaux) + 1/3·expr_patho
+# SCORE  =  Σ(fraction × poids) / Σ(poids)     (max 11 pts par défaut)
+#   spécificité   (poids 4) : 2/3·(1 − présence_normaux) + 1/3·expr_patho
 #                             présence_normaux = moyenne(freq_norm, val_norm)
 #                             (absence des normaux dominante ; expr patho module)
+#   type          (poids 3) : Transloc/Inversion 1 · Délét/Duplic 0.5 · RT 0.25 · sinon 0
+#   reading_frame (poids 2) : moyenne des 2 breakpoints ; par breakpoint :
+#                             bordure d'exon 1 · CDS 0.5 · reste (intron/UTR/inter) 0
 #   WHO           (poids 2) : fusion d'intérêt WHO -> 1 · sinon 0
 #   (confidence & reads Arriba : supprimées ; l'expression patho vit dans spéc.)
 #
@@ -81,7 +81,7 @@ opt <- list(
   n_top      = 30,                                  # figures
   rt_kb      = 300,                                 # seuil read-through (kb)
   bp_tol     = 2,                                   # tolérance bordure d'exon (nt)
-  w_type = 4, w_frame = 2, w_spec = 2, w_who = 2
+  w_type = 3, w_frame = 2, w_spec = 4, w_who = 2   # spéc. > type (surchargeable en CLI)
 )
 
 # ── PARSER CLI ───────────────────────────────────────────────────────────────

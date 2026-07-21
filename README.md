@@ -80,15 +80,18 @@ fichier local avec `--gtf` pour éviter tout accès réseau.
 ## Le score
 
 ```
-score_norm = Σ(fraction × poids) / Σ(poids)          (max 10 pts par défaut)
+score_norm = Σ(fraction × poids) / Σ(poids)          (max 11 pts par défaut)
 ```
 
 | Composante | Poids | Fraction ∈ [0,1] |
 |---|---|---|
-| **type** | 4 | Transloc./Inversion 1 · Délét./Duplic. 0,5 · Read-through 0,25 · sinon 0 |
+| **spécificité** | 4 | `⅔·(1 − présence_normaux) + ⅓·expr_patho` |
+| **type** | 3 | Transloc./Inversion 1 · Délét./Duplic. 0,5 · Read-through 0,25 · sinon 0 |
 | **reading_frame** | 2 | moyenne des 2 breakpoints : bordure d'exon 1 · CDS 0,5 · reste 0 |
-| **spécificité** | 2 | `⅔·(1 − présence_normaux) + ⅓·expr_patho` |
 | **WHO** | 2 | fusion d'intérêt WHO → 1 · sinon 0 |
+
+> La **spécificité** a le poids le plus fort (elle prime sur le type chimérique).
+> Tous les poids restent surchargeables en CLI (`--spec --type --frame --who`).
 
 avec, sur l'ensemble des fusions candidates :
 - `présence_normaux = moyenne(freq_norm, val_norm)` — l'**absence des normaux domine** ;
@@ -136,7 +139,7 @@ Rscript score_kmer.R \
 | `--gtf-url` | GENCODE v45 | URL de téléchargement |
 | `--cache-dir` | `annot_cache` | cache de l'annotation |
 | `--dir-out` | `analyse_fusions_kmer` | dossier de sortie |
-| `--type` `--frame` `--spec` `--who` | 4 / 2 / 2 / 2 | poids des composantes (0 = retirée) |
+| `--spec` `--type` `--frame` `--who` | 4 / 3 / 2 / 2 | poids des composantes (0 = retirée) |
 | `--n-top` | 30 | fusions affichées dans les figures |
 | `--rt-kb` | 300 | seuil read-through (kb) |
 | `--bp-tol` | 2 | tolérance « bordure d'exon » (nt) |
