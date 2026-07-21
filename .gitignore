@@ -1,0 +1,11 @@
+# Sorties d'analyse
+analyse_fusions_kmer/
+example/out*/
+# Cache d'annotation GENCODE (téléchargé au premier run)
+annot_cache/
+*.gtf.gz
+!example/*.gtf
+# Artefacts R
+.Rhistory
+.RData
+.Rproj.user/
