@@ -158,6 +158,13 @@ minmax <- function(x) {
   if (!is.finite(r[1]) || diff(r) == 0) return(rep(0.5, length(x)))
   (x - r[1]) / diff(r)
 }
+# variante pour les comptages normaux : si tout est égal (ex. aucune fusion
+# blacklistée), renvoie 0 -> "absent des normaux" = spécifique (et non 0.5 neutre)
+minmax0 <- function(x) {
+  x <- as.numeric(x); r <- range(x, na.rm = TRUE)
+  if (!is.finite(r[1]) || diff(r) == 0) return(rep(0, length(x)))
+  (x - r[1]) / diff(r)
+}
 
 # ── Parsing des identifiants ─────────────────────────────────────────────────
 # fusion_id : gene5_chr5_bp5_gene3_chr3_bp3[_index|index...]
@@ -229,6 +236,7 @@ if (file.exists(opt$blacklist)) {
   if (is.na(n_normaux_total) || n_normaux_total == 0) {
     n_normaux_total <- n_distinct(bl_raw$sample)
   }
+  n_normaux_total <- max(n_normaux_total, 1L)   # évite une division par zéro
   cat(nrow(bl), "fusions dans la blacklist (", n_normaux_total, "normaux)\n")
 } else {
   warning("Blacklist introuvable : ", opt$blacklist, " -> spécificité = absence supposée")
@@ -386,7 +394,7 @@ feat <- feat %>%
       TRUE ~ 0),
     # composante spécificité (contraste patho vs normaux, absence dominante)
     expr_patho       = minmax(log1p(mean_count_patho)),
-    val_norm         = minmax(log1p(mean_count_normaux)),
+    val_norm         = minmax0(log1p(mean_count_normaux)),
     freq_norm        = pmin(n_normaux_pos / n_normaux_total, 1),
     presence_normaux = (freq_norm + val_norm) / 2,
     frac_spec = (2/3) * (1 - presence_normaux) + (1/3) * expr_patho,
@@ -575,18 +583,32 @@ burden <- per_pat %>% filter(expr > 0) %>%
   inner_join(spec_pairs, by = "gene_pair") %>%
   count(sample, type_base, name = "n")
 if (nrow(burden) > 0) {
-  tot <- burden %>% group_by(sample) %>% summarise(t = sum(n), .groups = "drop")
+  # code anonyme par patient (P01 = plus forte charge) : la figure affiche les
+  # codes (souvent nombreux), les vrais noms sont dans la table de correspondance.
+  tot <- burden %>% group_by(sample) %>% summarise(t = sum(n), .groups = "drop") %>%
+    arrange(desc(t)) %>% mutate(patient_id = sprintf("P%02d", row_number()))
+  burden <- burden %>% left_join(tot, by = "sample")
+
+  # table de correspondance code -> patient (+ charge totale et détail par type)
+  corr <- burden %>%
+    pivot_wider(id_cols = c(patient_id, sample, t), names_from = type_base,
+                values_from = n, values_fill = 0) %>%
+    rename(n_fusions_total = t) %>% arrange(desc(n_fusions_total))
+  write_tsv(corr, file.path(DIR_OUT, "charge_par_patient_correspondance.tsv"))
+
   p_burden <- burden %>%
-    mutate(sample = factor(sample, levels = tot$sample[order(tot$t)])) %>%
-    ggplot(aes(n, sample, fill = type_base)) +
+    mutate(patient_id = factor(patient_id, levels = rev(tot$patient_id))) %>%
+    ggplot(aes(n, patient_id, fill = type_base)) +
     geom_col() +
     scale_fill_manual(values = TYPE_COLORS, drop = TRUE, name = "Type chimérique") +
     scale_x_continuous(expand = expansion(mult = c(0, 0.05))) +
     labs(title = "Charge de fusions chromo-spécifiques par patient",
-         subtitle = "Fusions (absentes des normaux) portées par chaque patient, par type",
+         subtitle = paste0("Codes anonymes (P01 = charge la plus forte) · noms réels dans ",
+                           "charge_par_patient_correspondance.tsv"),
          x = "Nombre de fusions", y = NULL) +
-    theme(plot.title = element_text(face = "bold"))
-  ggsave(file.path(DIR_FIG, "charge_par_patient.png"), p_burden, width = 10, height = 7, dpi = 150)
+    theme(plot.title = element_text(face = "bold"),
+          axis.text.y = element_text(size = 6))
+  ggsave(file.path(DIR_FIG, "charge_par_patient.png"), p_burden, width = 10, height = 8, dpi = 150)
 }
 
 # ── 11. RÉSUMÉ CONSOLE ───────────────────────────────────────────────────────
