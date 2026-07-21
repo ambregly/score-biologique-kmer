@@ -179,7 +179,10 @@ kmer_files <- list.files(opt$dir_kmer, pattern = "\\.tsv$", full.names = TRUE)
 if (length(kmer_files) == 0) {
   # tolère aussi un fichier unique passé en --dir-kmer
   if (file.exists(opt$dir_kmer) && !dir.exists(opt$dir_kmer)) kmer_files <- opt$dir_kmer
-  else stop("Aucun fichier .tsv k-mer dans : ", opt$dir_kmer)
+  else stop("Aucun fichier .tsv k-mer trouvé.\n  --dir-kmer = '", opt$dir_kmer,
+            "'\n  cherché (absolu) : ", normalizePath(opt$dir_kmer, mustWork = FALSE),
+            "\n  dossier courant  : ", getwd(),
+            "\n  -> vérifie le chemin (absolu conseillé) : le fichier/dossier n'existe pas ici.")
 }
 cat(length(kmer_files), "fichier(s) k-mer patho\n")
 patho_raw <- map_dfr(kmer_files, read_kmer_tsv) %>% filter(!is.na(fusion_id))
