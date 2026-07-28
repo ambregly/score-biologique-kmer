@@ -27,12 +27,12 @@
 #   strand -> direction :
 #       gène 5' / +  -> downstream      gène 5' / -  -> upstream
 #       gène 3' / +  -> upstream        gène 3' / -  -> downstream
-#   direction + chr + distance -> type (classe Rufflé) :
-#       chr différents           -> Translocation (Class 1)
-#       même chr, dir. égales    -> Inversion     (Class 4)
-#       même chr, dir. opposées  -> Délétion (Class 2) ou Duplication (Class 3)
+#   direction + chr + distance -> type (classe chimérique) :
+#       chr différents           -> Translocation (Classe 1)
+#       même chr, dir. égales    -> Inversion     (Classe 4)
+#       même chr, dir. opposées  -> Délétion (Classe 2) ou Duplication (Classe 3)
 #                                   selon l'ordre des breakpoints ; Read-through
-#                                   si délétion colinéaire même brin < seuil kb.
+#                                   (Classe 2) si délétion colinéaire même brin < seuil kb.
 #
 # ---------------------------------------------------------------------------
 # SCORE  =  Σ(fraction × poids) / Σ(poids)     (max 11 pts par défaut)
@@ -289,9 +289,10 @@ reconstruct_type <- function(chr5, bp5, dir5, str5, chr3, bp3, dir3, str3, rt_kb
   }
   out
 }
-ruffle_class <- function(type_base) case_when(
-  type_base == "Translocation" ~ "Class 1", type_base == "Délétion" ~ "Class 2",
-  type_base == "Duplication"   ~ "Class 3", type_base == "Inversion" ~ "Class 4",
+classe_chimerique <- function(type_base) case_when(
+  type_base == "Translocation" ~ "Classe 1",
+  type_base %in% c("Délétion", "Read-through") ~ "Classe 2",  # read-through = délétion particulière
+  type_base == "Duplication"   ~ "Classe 3", type_base == "Inversion" ~ "Classe 4",
   TRUE ~ NA_character_)
 TYPE_COLORS <- c(Translocation = "#d62728", Inversion = "#9467bd", "Délétion" = "#ff7f0e",
                  Duplication = "#1f77b4", "Read-through" = "#2ca02c",
@@ -367,7 +368,7 @@ feat <- patho_agg %>%
     direction3 = direction_3p(strand3),
     type_base  = reconstruct_type(chr5, bp5, direction5, strand5,
                                   chr3, bp3, direction3, strand3, opt$rt_kb),
-    class_ruffle = ruffle_class(type_base),
+    classe_chimerique = classe_chimerique(type_base),
     distance_bp  = if_else(chr5 == chr3, abs(bp5 - bp3), NA_real_),
     is_who = paste(g5n, g3n, sep = "--") %in% WHO_FUSIONS_INTEREST |
              paste(g3n, g5n, sep = "--") %in% WHO_FUSIONS_INTEREST
@@ -450,7 +451,7 @@ out_cols <- c(
   "gene_pair",
   "fusion_core", "gene5", "chr5", "bp5", "gene3", "chr3", "bp3",
   "strand5", "strand3", "direction5", "direction3",
-  "type_base", "class_ruffle", "distance_bp", "is_who",
+  "type_base", "classe_chimerique", "distance_bp", "is_who",
   "mean_count_patho", "n_patients_pos", "n_kmers", "expr_patho",
   "n_normaux_pos", "freq_norm", "mean_count_normaux", "val_norm", "presence_normaux",
   "max_patient", "n_pat_pos", "focalite_idx", "focalite",
@@ -479,7 +480,7 @@ fig_df <- feat %>% mutate(fusion_label = paste(gene5, gene3, sep = "--"),
 # 10a. Classement par score biologique
 p_rank <- fig_df %>% slice_max(score_norm, n = N_TOP, with_ties = FALSE) %>%
   mutate(fusion_ord = reorder(fusion_label, score_norm),
-         etiq = paste0(coalesce(class_ruffle, "—"), " · ",
+         etiq = paste0(coalesce(classe_chimerique, "—"), " · ",
                        coalesce(recode(ctx5, exon_boundary = "exon", CDS = "cds", other = "—"), "—"))) %>%
   ggplot(aes(score_norm, fusion_ord, fill = priorite)) +
   geom_col(width = 0.75) +
@@ -497,10 +498,10 @@ p_rank <- fig_df %>% slice_max(score_norm, n = N_TOP, with_ties = FALSE) %>%
 ggsave(file.path(DIR_FIG, "score_classement.png"), p_rank, width = 12, height = 9, dpi = 150)
 
 # 10b. Répartition des types chimériques reconstruits
-p_type <- fig_df %>% count(type_base, class_ruffle, name = "n") %>%
-  ggplot(aes(n, fct_reorder(type_base, n, sum), fill = class_ruffle)) +
+p_type <- fig_df %>% count(type_base, classe_chimerique, name = "n") %>%
+  ggplot(aes(n, fct_reorder(type_base, n, sum), fill = classe_chimerique)) +
   geom_col() +
-  scale_fill_brewer(palette = "Set2", name = "Classe Rufflé", na.value = "grey70") +
+  scale_fill_brewer(palette = "Set2", name = "Classe chimérique", na.value = "grey70") +
   scale_x_continuous(expand = expansion(mult = c(0, 0.05))) +
   labs(title = "Types chimériques reconstruits (strand + direction + distance)",
        x = "Nombre de fusions", y = NULL) +

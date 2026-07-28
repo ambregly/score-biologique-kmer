@@ -63,15 +63,15 @@ fichier local avec `--gtf` pour éviter tout accès réseau.
 | 3' (BED right) | `+` | upstream |
 | 3' (BED right) | `−` | downstream |
 
-**Direction + chr + distance → type (classe Rufflé)** :
+**Direction + chr + distance → type (classe chimérique)** :
 
 | Situation | type | classe |
 |---|---|---|
-| chromosomes différents | Translocation | Class 1 |
-| même chr, directions **égales** | Inversion | Class 4 |
-| même chr, dir. opposées, délétion colinéaire même brin < seuil kb | Read-through | — |
-| même chr, dir. opposées, `bp5' < bp3'` (dir 5'=downstream) | Délétion | Class 2 |
-| même chr, dir. opposées, ordre inverse | Duplication | Class 3 |
+| chromosomes différents | Translocation | Classe 1 |
+| même chr, directions **égales** | Inversion | Classe 4 |
+| même chr, dir. opposées, délétion colinéaire même brin < seuil kb | Read-through | Classe 2 |
+| même chr, dir. opposées, `bp5' < bp3'` (dir 5'=downstream) | Délétion | Classe 2 |
+| même chr, dir. opposées, ordre inverse | Duplication | Classe 3 |
 
 (Brin manquant → type `Indéterminé` ; une translocation reste détectable sans brin.)
 
