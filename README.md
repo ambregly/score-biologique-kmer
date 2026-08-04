@@ -118,7 +118,7 @@ Un poids à `0` retire la composante du calcul **et** du dénominateur.
 
 ## Cartes de priorisation & concentration
 
-Les cartes (`carte_priorisation_*.png`) sont des *bubble scatter* :
+Les cartes (`carte_priorisation_*.pdf`) sont des *bubble scatter* :
 **x** = score biologique, **y** = comptage k-mer **max chez un patient** (log),
 **taille** = concentration, **couleur** = répartition entre patients (nb de patients
 positifs) ou type chimérique. La zone ombrée = priorité P1 (score ≥ 65 %).
@@ -148,7 +148,7 @@ exactement le profil recherché pour un événement spécifique à un individu /
 > l'axe **y**). Les deux se combinent : haut sur y **et** grosse bulle = fusion à la
 > fois fortement exprimée **et** privée.
 
-La **charge par patient** (`charge_par_patient.png`) affiche des **codes anonymes**
+La **charge par patient** (`charge_par_patient.pdf`) affiche des **codes anonymes**
 (`P01` = charge la plus forte) car les patients sont nombreux ; la correspondance
 code ↔ vrai nom (avec la charge et le détail par type) est dans
 `charge_par_patient_correspondance.tsv`.
@@ -189,12 +189,12 @@ analyse_fusions_kmer/
 ├── fusions_specifiques_kmer.tsv        # sous-ensemble absent des normaux
 ├── charge_par_patient_correspondance.tsv # code anonyme ↔ vrai nom de patient (+ charge)
 └── figures/
-    ├── carte_priorisation_repartition.png # score × expression max/patient, couleur = répartition
-    ├── carte_priorisation_type.png     # même carte, couleur = type chimérique
-    ├── charge_par_patient.png          # nb de fusions chromo-spé. par patient (codes anonymes), par type
-    ├── score_classement.png            # top fusions par score
-    ├── repartition_types.png           # types chimériques reconstruits
-    └── score_decomposition.png         # décomposition du score par composante
+    ├── carte_priorisation_repartition.pdf # score × expression max/patient, couleur = répartition
+    ├── carte_priorisation_type.pdf     # même carte, couleur = type chimérique
+    ├── charge_par_patient.pdf          # nb de fusions chromo-spé. par patient (codes anonymes), par type
+    ├── score_classement.pdf            # top fusions par score
+    ├── repartition_types.pdf           # types chimériques reconstruits
+    └── score_decomposition.pdf         # décomposition du score par composante
 ```
 
 ---

@@ -71,8 +71,10 @@ suppressPackageStartupMessages({
   library(tidyverse)
   library(scales)
 })
-# device cairo si dispo : rendu correct des accents et du "²" dans les PNG
+# device cairo si dispo : rendu correct des accents et du "²" dans les figures
 if (isTRUE(capabilities("cairo"))) options(bitmapType = "cairo")
+# figures en PDF vectoriel ; cairo_pdf gère l'UTF-8 (accents, "²"), sinon pdf standard
+PDF_DEV <- if (isTRUE(capabilities("cairo"))) grDevices::cairo_pdf else grDevices::pdf
 
 # ── CONFIG PAR DÉFAUT ────────────────────────────────────────────────────────
 opt <- list(
@@ -505,7 +507,7 @@ p_rank <- fig_df %>% slice_max(score_norm, n = N_TOP, with_ties = FALSE) %>%
        x = "Score normalisé", y = NULL) +
   theme(axis.text.y = element_text(size = 7), panel.grid.minor = element_blank(),
         plot.title = element_text(face = "bold"))
-ggsave(file.path(DIR_FIG, "score_classement.png"), p_rank, width = 12, height = 9, dpi = 150)
+ggsave(file.path(DIR_FIG, "score_classement.pdf"), p_rank, width = 12, height = 9, device = PDF_DEV)
 
 # 10b. Répartition des types chimériques reconstruits
 p_type <- fig_df %>% count(type_base, classe_chimerique, name = "n") %>%
@@ -516,7 +518,7 @@ p_type <- fig_df %>% count(type_base, classe_chimerique, name = "n") %>%
   labs(title = "Types chimériques reconstruits (strand + direction + distance)",
        x = "Nombre de fusions", y = NULL) +
   theme(plot.title = element_text(face = "bold"))
-ggsave(file.path(DIR_FIG, "repartition_types.png"), p_type, width = 9, height = 5, dpi = 150)
+ggsave(file.path(DIR_FIG, "repartition_types.pdf"), p_type, width = 9, height = 5, device = PDF_DEV)
 
 # 10c. Décomposition du score (composantes actives)
 comp_def <- tibble::tribble(
@@ -535,7 +537,7 @@ p_dec <- ggplot(dec_df, aes(val, fusion_ord, fill = comp)) +
   labs(title = "Décomposition du score biologique (k-mer)",
        x = paste0("Points cumulés (max = ", MAX_SCORE, ")"), y = NULL) +
   theme(axis.text.y = element_text(size = 7), legend.position = "bottom")
-ggsave(file.path(DIR_FIG, "score_decomposition.png"), p_dec, width = 11, height = 9, dpi = 150)
+ggsave(file.path(DIR_FIG, "score_decomposition.pdf"), p_dec, width = 11, height = 9, device = PDF_DEV)
 
 # ── 10d/10e. CARTES DE PRIORISATION (score × expression max par patient) ──────
 has_repel <- requireNamespace("ggrepel", quietly = TRUE)
@@ -578,15 +580,15 @@ if (nrow(map_df) > 0) {
       scale_color_manual(values = REPART_COLORS, name = "Répartition entre patients", na.value = "grey70")) +
     labs(title = "Carte de priorisation des fusions chromo-spécifiques",
          subtitle = "Score biologique × expression max par patient · taille = concentration sur le patient principal")
-  ggsave(file.path(DIR_FIG, "carte_priorisation_repartition.png"), p_map_rep,
-         width = 12, height = 9, dpi = 150)
+  ggsave(file.path(DIR_FIG, "carte_priorisation_repartition.pdf"), p_map_rep,
+         width = 12, height = 9, device = PDF_DEV)
 
   p_map_type <- prioris_map("type_base",
       scale_color_manual(values = TYPE_COLORS, drop = FALSE, name = "Type chimérique", na.value = "grey65")) +
     labs(title = "Carte de priorisation — colorée par type chimérique",
          subtitle = "Score biologique × expression max par patient · taille = concentration sur le patient principal")
-  ggsave(file.path(DIR_FIG, "carte_priorisation_type.png"), p_map_type,
-         width = 12, height = 9, dpi = 150)
+  ggsave(file.path(DIR_FIG, "carte_priorisation_type.pdf"), p_map_type,
+         width = 12, height = 9, device = PDF_DEV)
 }
 
 # ── 10f. CHARGE PAR PATIENT (fusions chromo-spécifiques portées par patient) ──
@@ -621,7 +623,7 @@ if (nrow(burden) > 0) {
          x = "Nombre de fusions", y = NULL) +
     theme(plot.title = element_text(face = "bold"),
           axis.text.y = element_text(size = 6))
-  ggsave(file.path(DIR_FIG, "charge_par_patient.png"), p_burden, width = 10, height = 8, dpi = 150)
+  ggsave(file.path(DIR_FIG, "charge_par_patient.pdf"), p_burden, width = 10, height = 8, device = PDF_DEV)
 }
 
 # ── 11. RÉSUMÉ CONSOLE ───────────────────────────────────────────────────────
