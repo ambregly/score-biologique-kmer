@@ -428,7 +428,8 @@ cat(nrow(feat), "fusions après déduplication par paire de gènes (sur",
 
 # ── 8c. STATS PAR PATIENT (pour les cartes de priorisation) ──────────────────
 # expression d'une fusion chez un patient = moyenne de ses k-mers chez ce patient.
-# Indice de focalité = max² / somme (grand = expression concentrée sur 1 patient).
+# Concentration = max / somme = part de l'expression portée par le patient
+# principal (100 % = tout chez un seul patient ; petit = étalé sur beaucoup).
 per_pat <- patho %>%
   mutate(gene_pair = paste(resolve_alias(gene5), resolve_alias(gene3), sep = "--")) %>%
   group_by(gene_pair, sample) %>%
@@ -438,12 +439,12 @@ foc <- per_pat %>%
   summarise(max_patient = max(expr, na.rm = TRUE),
             sum_patient = sum(expr, na.rm = TRUE),
             n_pat_pos   = sum(expr > 0), .groups = "drop") %>%
-  mutate(focalite_idx = ifelse(sum_patient > 0, max_patient^2 / sum_patient, 0),
-         focalite = factor(case_when(
-           n_pat_pos <= 1 ~ "1 patient (mono)",
-           n_pat_pos <= 3 ~ "2–3 patients (focale)",
+  mutate(concentration = ifelse(sum_patient > 0, max_patient / sum_patient, 0),
+         repartition = factor(case_when(
+           n_pat_pos <= 1 ~ "1 patient (unique)",
+           n_pat_pos <= 3 ~ "2–3 patients (restreinte)",
            TRUE           ~ "≥ 4 patients (diffuse)"),
-           levels = c("1 patient (mono)", "2–3 patients (focale)", "≥ 4 patients (diffuse)")))
+           levels = c("1 patient (unique)", "2–3 patients (restreinte)", "≥ 4 patients (diffuse)")))
 feat <- feat %>% left_join(foc, by = "gene_pair")
 
 # ── 9. SORTIE TABLE ──────────────────────────────────────────────────────────
@@ -454,7 +455,7 @@ out_cols <- c(
   "type_base", "classe_chimerique", "distance_bp", "is_who",
   "mean_count_patho", "n_patients_pos", "n_kmers", "expr_patho",
   "n_normaux_pos", "freq_norm", "mean_count_normaux", "val_norm", "presence_normaux",
-  "max_patient", "n_pat_pos", "focalite_idx", "focalite",
+  "max_patient", "n_pat_pos", "concentration", "repartition",
   "ctx5", "ctx3", "frac_frame",
   "frac_type", "frac_spec", "frac_who",
   "score_type", "score_frame", "score_spec", "score_who",
@@ -529,9 +530,9 @@ ggsave(file.path(DIR_FIG, "score_decomposition.png"), p_dec, width = 11, height 
 
 # ── 10d/10e. CARTES DE PRIORISATION (score × expression max par patient) ──────
 has_repel <- requireNamespace("ggrepel", quietly = TRUE)
-FOCALITE_COLORS <- c("1 patient (mono)" = "#d62728",
-                     "2–3 patients (focale)" = "#ff7f0e",
-                     "≥ 4 patients (diffuse)" = "#1f77b4")
+REPART_COLORS <- c("1 patient (unique)" = "#d62728",
+                   "2–3 patients (restreinte)" = "#ff7f0e",
+                   "≥ 4 patients (diffuse)" = "#1f77b4")
 map_df <- fig_df %>% filter(!is.na(max_patient), max_patient > 0)
 # labels : fusions notables (zone P1 OU expression dans le top 10 %)
 lab_df <- if (nrow(map_df) > 0) map_df %>%
@@ -552,27 +553,29 @@ prioris_map <- function(colvar, cscale) {
              fill = "#d62728", alpha = 0.05) +
     geom_vline(xintercept = 0.65, linetype = "dashed", color = "grey40", linewidth = 0.3) +
     geom_vline(xintercept = 0.40, linetype = "dotted", color = "grey55", linewidth = 0.3) +
-    geom_point(aes(size = focalite_idx, color = .data[[colvar]]), alpha = 0.85) +
+    geom_point(aes(size = concentration, color = .data[[colvar]]), alpha = 0.85) +
     scale_y_log10() +
     scale_x_continuous(labels = percent_format(accuracy = 1)) +
-    scale_size_area(max_size = 12, name = "Indice focalité\n(max² / somme)") +
+    scale_size_area(max_size = 12, limits = c(0, 1),
+                    breaks = c(0.25, 0.5, 0.75, 1), labels = percent_format(accuracy = 1),
+                    name = "Concentration\n(part du patient principal)") +
     cscale +
     labs(x = "Score biologique", y = "Comptage k-mer max chez un patient (log)") +
     theme(plot.title = element_text(face = "bold"))
   add_labels(p)
 }
 if (nrow(map_df) > 0) {
-  p_map_foc <- prioris_map("focalite",
-      scale_color_manual(values = FOCALITE_COLORS, name = "Focalité", na.value = "grey70")) +
+  p_map_rep <- prioris_map("repartition",
+      scale_color_manual(values = REPART_COLORS, name = "Répartition entre patients", na.value = "grey70")) +
     labs(title = "Carte de priorisation des fusions chromo-spécifiques",
-         subtitle = "Score biologique × expression max par patient · focalité = spécificité à un sous-groupe")
-  ggsave(file.path(DIR_FIG, "carte_priorisation_focalite.png"), p_map_foc,
+         subtitle = "Score biologique × expression max par patient · taille = concentration sur le patient principal")
+  ggsave(file.path(DIR_FIG, "carte_priorisation_repartition.png"), p_map_rep,
          width = 12, height = 9, dpi = 150)
 
   p_map_type <- prioris_map("type_base",
       scale_color_manual(values = TYPE_COLORS, drop = FALSE, name = "Type chimérique", na.value = "grey65")) +
     labs(title = "Carte de priorisation — colorée par type chimérique",
-         subtitle = "Score biologique × expression max par patient · couleur = type reconstruit")
+         subtitle = "Score biologique × expression max par patient · taille = concentration sur le patient principal")
   ggsave(file.path(DIR_FIG, "carte_priorisation_type.png"), p_map_type,
          width = 12, height = 9, dpi = 150)
 }

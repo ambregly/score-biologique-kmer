@@ -116,39 +116,37 @@ Un poids à `0` retire la composante du calcul **et** du dénominateur.
 
 ---
 
-## Cartes de priorisation & indice de focalité
+## Cartes de priorisation & concentration
 
 Les cartes (`carte_priorisation_*.png`) sont des *bubble scatter* :
 **x** = score biologique, **y** = comptage k-mer **max chez un patient** (log),
-**taille** = indice de focalité, **couleur** = focalité (nb de patients positifs)
-ou type chimérique. La zone ombrée = priorité P1 (score ≥ 65 %).
+**taille** = concentration, **couleur** = répartition entre patients (nb de patients
+positifs) ou type chimérique. La zone ombrée = priorité P1 (score ≥ 65 %).
 
-### Indice de focalité
+### Concentration (part du patient principal)
 
-$$\text{focalité} = \frac{\max^2}{\text{somme}}
-  = \underbrace{\max}_{\text{niveau}} \times \underbrace{\frac{\max}{\text{somme}}}_{\text{concentration}}$$
+$$\text{concentration} = \frac{\max}{\text{somme}} \in\ ]0,1]$$
 
 où `max` = comptage de la fusion **chez son patient le plus positif** et `somme` =
-total de ses comptages **sur tous les patients positifs**. L'indice se décompose en :
+total de ses comptages **sur tous les patients positifs**. C'est la **part de
+l'expression totale portée par le patient principal**, exprimée en **pourcentage** :
 
-- **`max`** — à quel point la fusion est **fortement exprimée** (chez son meilleur patient) ;
-- **`max/somme`** ∈ ]0,1] — la **fraction du signal portée par un seul patient**
-  (1 = tout chez un patient ; petit = étalé sur beaucoup).
+- **100 %** = toute l'expression est chez **un seul** patient → événement *privé* ;
+- **petit %** = expression **étalée** sur beaucoup de patients → diffuse.
 
-**Plus la bulle est grosse, plus la fusion est à la fois fortement exprimée ET
-concentrée sur (quasiment) un seul patient** → un événement *privé*, spécifique à
-un individu / sous-groupe : exactement le profil recherché.
+**Plus la bulle est grosse, plus la fusion est concentrée sur un seul patient** —
+exactement le profil recherché pour un événement spécifique à un individu / sous-groupe.
 
-| Comptages par patient | max | somme | focalité | Lecture |
+| Comptages par patient | max | somme | concentration | Lecture |
 |---|---|---|---|---|
-| `[100, 0, 0]` | 100 | 100 | **100** | forte + 1 seul patient → grosse bulle |
-| `[100, 100, 100]` | 100 | 300 | **33** | forte mais étalée sur 3 → plus petite |
-| `[10, 0, 0]` | 10 | 10 | **10** | 1 seul patient mais faible → moyenne |
-| `[3, 3, 3, 3, 3]` | 3 | 15 | **0,6** | faible + diffuse → minuscule |
+| `[100, 0, 0]` | 100 | 100 | **100 %** | tout chez 1 patient → grosse bulle |
+| `[100, 100, 100]` | 100 | 300 | **33 %** | étalée sur 3 → moyenne |
+| `[10, 5, 5]` | 10 | 20 | **50 %** | moitié sur le patient principal |
+| `[3, 3, 3, 3, 3]` | 3 | 15 | **20 %** | diffuse sur 5 → petite bulle |
 
-> L'indice **dépend du niveau d'expression** (échelle en comptages, pas 0–1) : c'est
-> voulu — on veut repérer les fusions à la fois **fortes** et **privées**. Pour une
-> concentration *pure* (indépendante du niveau), utiliser `max/somme` à la place.
+> La concentration est **indépendante du niveau d'expression** (le niveau se lit sur
+> l'axe **y**). Les deux se combinent : haut sur y **et** grosse bulle = fusion à la
+> fois fortement exprimée **et** privée.
 
 La **charge par patient** (`charge_par_patient.png`) affiche des **codes anonymes**
 (`P01` = charge la plus forte) car les patients sont nombreux ; la correspondance
@@ -191,7 +189,7 @@ analyse_fusions_kmer/
 ├── fusions_specifiques_kmer.tsv        # sous-ensemble absent des normaux
 ├── charge_par_patient_correspondance.tsv # code anonyme ↔ vrai nom de patient (+ charge)
 └── figures/
-    ├── carte_priorisation_focalite.png # score × expression max/patient, couleur = focalité
+    ├── carte_priorisation_repartition.png # score × expression max/patient, couleur = répartition
     ├── carte_priorisation_type.png     # même carte, couleur = type chimérique
     ├── charge_par_patient.png          # nb de fusions chromo-spé. par patient (codes anonymes), par type
     ├── score_classement.png            # top fusions par score
