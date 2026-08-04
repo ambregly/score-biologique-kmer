@@ -116,37 +116,29 @@ Un poids à `0` retire la composante du calcul **et** du dénominateur.
 
 ---
 
-## Cartes de priorisation & concentration
+## Cartes de priorisation
 
-Les cartes (`carte_priorisation_*.pdf`) sont des *bubble scatter* :
+Les cartes (`carte_priorisation_*.pdf`) sont des nuages de points :
 **x** = score biologique, **y** = comptage k-mer **max chez un patient** (log),
-**taille** = concentration, **couleur** = répartition entre patients (nb de patients
-positifs) ou type chimérique. La zone ombrée = priorité P1 (score ≥ 65 %).
+**couleur** = fréquence (patients positifs) ou type chimérique, points de **taille
+fixe**. La zone ombrée = priorité P1 (score ≥ 65 %).
 
-### Concentration (part du patient principal)
+### Fréquence (patients positifs)
 
-$$\text{concentration} = \frac{\max}{\text{somme}} \in\ ]0,1]$$
+$$\text{fréquence} = \frac{\text{nb de patients positifs}}{\text{nb total de patients}}$$
 
-où `max` = comptage de la fusion **chez son patient le plus positif** et `somme` =
-total de ses comptages **sur tous les patients positifs**. C'est la **part de
-l'expression totale portée par le patient principal**, exprimée en **pourcentage** :
+= proportion de la cohorte qui **porte** la fusion, codée en couleur par classes
+(palette séquentielle jaune → rouge, rare → fréquent) :
 
-- **100 %** = toute l'expression est chez **un seul** patient → événement *privé* ;
-- **petit %** = expression **étalée** sur beaucoup de patients → diffuse.
+| Classe | Interprétation |
+|---|---|
+| `≤ 1 %` | quasi absente de la cohorte |
+| `1–5 %` | rare |
+| `5–15 %` | peu fréquente |
+| `15–20 %` | fréquente |
+| `> 20 %` | très fréquente |
 
-**Plus la bulle est grosse, plus la fusion est concentrée sur un seul patient** —
-exactement le profil recherché pour un événement spécifique à un individu / sous-groupe.
-
-| Comptages par patient | max | somme | concentration | Lecture |
-|---|---|---|---|---|
-| `[100, 0, 0]` | 100 | 100 | **100 %** | tout chez 1 patient → grosse bulle |
-| `[100, 100, 100]` | 100 | 300 | **33 %** | étalée sur 3 → moyenne |
-| `[10, 5, 5]` | 10 | 20 | **50 %** | moitié sur le patient principal |
-| `[3, 3, 3, 3, 3]` | 3 | 15 | **20 %** | diffuse sur 5 → petite bulle |
-
-> La concentration est **indépendante du niveau d'expression** (le niveau se lit sur
-> l'axe **y**). Les deux se combinent : haut sur y **et** grosse bulle = fusion à la
-> fois fortement exprimée **et** privée.
+(Seuils modifiables dans le script : `FREQ_LEVELS` / `breaks`.)
 
 La **charge par patient** (`charge_par_patient.pdf`) affiche des **codes anonymes**
 (`P01` = charge la plus forte) car les patients sont nombreux ; la correspondance
@@ -189,7 +181,7 @@ analyse_fusions_kmer/
 ├── fusions_specifiques_kmer.tsv        # sous-ensemble absent des normaux
 ├── charge_par_patient_correspondance.tsv # code anonyme ↔ vrai nom de patient (+ charge)
 └── figures/
-    ├── carte_priorisation_repartition.pdf # score × expression max/patient, couleur = répartition
+    ├── carte_priorisation_frequence.pdf # score × expression max/patient, couleur = fréquence
     ├── carte_priorisation_type.pdf     # même carte, couleur = type chimérique
     ├── charge_par_patient.pdf          # nb de fusions chromo-spé. par patient (codes anonymes), par type
     ├── score_classement.pdf            # top fusions par score
