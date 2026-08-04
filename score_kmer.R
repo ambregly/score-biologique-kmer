@@ -41,7 +41,7 @@
 #                             (absence des normaux dominante ; expr patho module)
 #   type          (poids 3) : Transloc/Inversion 1 · Délét/Duplic 0.5 · RT 0.25 · sinon 0
 #   reading_frame (poids 2) : moyenne des 2 breakpoints ; par breakpoint :
-#                             bordure d'exon 1 · CDS 0.5 · reste (intron/UTR/inter) 0
+#                             bordure exacte 1 · <5nt de la bordure 0.9 · CDS 0.5 · reste 0
 #   WHO           (poids 2) : fusion d'intérêt WHO -> 1 · sinon 0
 #   (confidence & reads Arriba : supprimées ; l'expression patho vit dans spéc.)
 #
@@ -86,7 +86,7 @@ opt <- list(
   dir_out    = "analyse_fusions_kmer",
   n_top      = 30,                                  # figures
   rt_kb      = 300,                                 # seuil read-through (kb)
-  bp_tol     = 2,                                   # tolérance bordure d'exon (nt)
+  bp_tol     = 5,                                   # tolérance bordure d'exon (nt)
   w_type = 3, w_frame = 2, w_spec = 4, w_who = 2   # spéc. > type (surchargeable en CLI)
 )
 
@@ -100,7 +100,7 @@ if ("--help" %in% args || "-h" %in% args) {
       "Chemins  : --dir-kmer --blacklist --bed-left --bed-right --gtf --gtf-url",
       "--cache-dir --dir-out\n",
       "Poids    : --type (4) --frame (2) --spec (2) --who (2)  [0 = retirée]\n",
-      "Autres   : --n-top (30) --rt-kb (300) --bp-tol (2)\n",
+      "Autres   : --n-top (30) --rt-kb (300) --bp-tol (5)\n",
       "Voir l'entête du script pour le détail.\n")
   quit(status = 0)
 }
@@ -337,7 +337,9 @@ load_annotation <- function(genes) {
   list(exon = exons, cds = cds)
 }
 
-# contexte d'un breakpoint : "exon_boundary" / "CDS" / "other"
+# contexte d'un breakpoint, nuancé selon la distance à la bordure d'exon :
+#   "exon_boundary" = match PARFAIT (dist 0) ; "exon_near" = à <= tol nt d'une
+#   bordure ; sinon "CDS" (codant) ou "other" (intron/UTR/intergénique).
 bp_context <- function(gene, chr, bp, annot, tol) {
   n <- length(bp); out <- rep("other", n)
   if (is.null(annot)) return(rep(NA_character_, n))       # -> fraction neutre plus loin
@@ -346,14 +348,20 @@ bp_context <- function(gene, chr, bp, annot, tol) {
     g <- gene[k]; c <- norm_chr(chr[k]); p <- bp[k]
     if (is.na(g) || is.na(p)) { out[k] <- NA_character_; next }
     ex <- annot$exon %>% filter(gene == g, norm_chr(chr) == c)
-    if (nrow(ex) > 0 && min(abs(ex$pos - p)) <= tol) { out[k] <- "exon_boundary"; next }
+    if (nrow(ex) > 0) {
+      d <- min(abs(ex$pos - p))
+      if (d == 0)   { out[k] <- "exon_boundary"; next }   # bordure exacte
+      if (d <= tol) { out[k] <- "exon_near";     next }   # à <= tol nt de la bordure
+    }
     cd <- annot$cds %>% filter(gene == g, norm_chr(chr) == c)
     if (nrow(cd) > 0 && any(cd$start <= p & p <= cd$end)) { out[k] <- "CDS"; next }
   }
   out
 }
-ctx_frac <- function(ctx) case_when(ctx == "exon_boundary" ~ 1.0, ctx == "CDS" ~ 0.5,
-                                    ctx == "other" ~ 0.0, TRUE ~ 0.5)  # NA (pas d'annot) -> neutre
+# fractions : bordure exacte 1.0 · proche (<= tol) 0.9 · CDS 0.5 · reste 0 · NA neutre
+ctx_frac <- function(ctx) case_when(
+  ctx == "exon_boundary" ~ 1.0, ctx == "exon_near" ~ 0.9,
+  ctx == "CDS" ~ 0.5, ctx == "other" ~ 0.0, TRUE ~ 0.5)
 
 # ── 7. ASSEMBLAGE DES CARACTÉRISTIQUES ───────────────────────────────────────
 feat <- patho_agg %>%
@@ -482,7 +490,8 @@ fig_df <- feat %>% mutate(fusion_label = paste(gene5, gene3, sep = "--"),
 p_rank <- fig_df %>% slice_max(score_norm, n = N_TOP, with_ties = FALSE) %>%
   mutate(fusion_ord = reorder(fusion_label, score_norm),
          etiq = paste0(coalesce(classe_chimerique, "—"), " · ",
-                       coalesce(recode(ctx5, exon_boundary = "exon", CDS = "cds", other = "—"), "—"))) %>%
+                       coalesce(recode(ctx5, exon_boundary = "exon", exon_near = "exon≈",
+                                       CDS = "cds", other = "—"), "—"))) %>%
   ggplot(aes(score_norm, fusion_ord, fill = priorite)) +
   geom_col(width = 0.75) +
   geom_vline(xintercept = c(0.65, 0.40, 0.20), linetype = c("dashed", "dotted", "dotdash"),

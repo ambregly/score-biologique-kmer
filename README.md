@@ -87,7 +87,7 @@ score_norm = Σ(fraction × poids) / Σ(poids)          (max 11 pts par défaut)
 |---|---|---|
 | **spécificité** | 4 | `⅔·(1 − présence_normaux) + ⅓·expr_patho` |
 | **type** | 3 | Transloc./Inversion 1 · Délét./Duplic. 0,5 · Read-through 0,25 · sinon 0 |
-| **reading_frame** | 2 | moyenne des 2 breakpoints : bordure d'exon 1 · CDS 0,5 · reste 0 |
+| **reading_frame** | 2 | moyenne des 2 breakpoints : bordure exacte 1 · <5 nt 0,9 · CDS 0,5 · reste 0 |
 | **WHO** | 2 | fusion d'intérêt WHO → 1 · sinon 0 |
 
 > La **spécificité** a le poids le plus fort (elle prime sur le type chimérique).
@@ -179,7 +179,7 @@ Rscript score_kmer.R \
 | `--spec` `--type` `--frame` `--who` | 4 / 3 / 2 / 2 | poids des composantes (0 = retirée) |
 | `--n-top` | 30 | fusions affichées dans les figures |
 | `--rt-kb` | 300 | seuil read-through (kb) |
-| `--bp-tol` | 2 | tolérance « bordure d'exon » (nt) |
+| `--bp-tol` | 5 | distance max (nt) pour « proche d'une bordure d'exon » (fraction 0,9) |
 
 ### Sorties (`--dir-out`)
 ```
